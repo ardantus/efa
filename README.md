@@ -8,7 +8,16 @@ Source code asli dapat ditemukan di: https://github.com/E-F-A/eFa5
 
 ## Lisensi
 
-Proyek ini dilisensikan di bawah **GPLv3**, sama seperti proyek aslinya.
+Proyek ini adalah karya turunan (derivative work) dari [eFa5 Project](https://github.com/E-F-A/eFa5).
+Kode sumber dalam repositori ini dilisensikan di bawah **GNU General Public License version 3** atau yang lebih baru (GPLv3+).
+
+Anda diizinkan untuk menyalin, mendistribusikan, dan memodifikasi perangkat lunak ini asalkan Anda menyertakan sumber kode aslinya, serta perubahan yang Anda buat tetap berada di bawah lisensi yang sama (copyleft).
+
+Lihat file [LICENSE](LICENSE) untuk teks lengkap dari lisensi ini.
+
+### Atribusi
+Proyek ini mengakui kerja keras pengembang asli dari [eFa Project](https://efa-project.org/).
+Penulisan ulang deklaratif untuk NixOS ini tidak akan mungkin terjadi tanpa fondasi kokoh yang dibangun oleh tim eFa. Seluruh logika aplikasi, konfigurasi default, dan struktur layanan yang diadaptasi bersumber dari repositori upstream mereka.
 
 ---
 
