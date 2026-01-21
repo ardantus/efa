@@ -1,0 +1,7 @@
+services:
+  nixos:
+    image: nixos/nix:2.19.3
+    volumes:
+      - ./:/efa
+    working_dir: /efa
+    command: ["sleep", "infinity"]

@@ -1,0 +1,195 @@
+#!/bin/bash
+#-----------------------------------------------------------------------------#
+# eFa NixOS Commit Script - Wrapper for NixOS compatibility
+#-----------------------------------------------------------------------------#
+# This script wraps/replaces eFa-Commit for NixOS systems
+# Most configuration is done declaratively in NixOS, so this script
+# only handles runtime configuration that can't be done declaratively.
+#-----------------------------------------------------------------------------#
+
+set -e
+
+# Color codes
+green='\E[00;32m'
+red='\E[00;31m'
+clean='\e[00m'
+
+# Check if we're on NixOS
+if [ ! -f /etc/NIXOS ]; then
+  echo "This script is for NixOS only"
+  exit 1
+fi
+
+# Password file locations (NixOS style)
+EFA_PASS_FILE="/run/secrets/efa-db-pass"
+MAILWATCH_PASS_FILE="/run/secrets/mailwatch-db-pass"
+SA_PASS_FILE="/run/secrets/sa-db-pass"
+SQLGREY_PASS_FILE="/run/secrets/sqlgrey-db-pass"
+OPENDMARC_PASS_FILE="/run/secrets/opendmarc-db-pass"
+
+# Default password if secrets don't exist
+DEFAULT_PASS="nixos"
+
+get_password() {
+  local file="$1"
+  if [ -r "$file" ]; then
+    cat "$file"
+  else
+    echo "$DEFAULT_PASS"
+  fi
+}
+
+# Parse arguments
+startmariadb=0
+confighost=0
+configmailwatch=0
+configmysql=0
+finalize=0
+verbose=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --startmariadb) startmariadb=1 ;;
+    --confighost) confighost=1 ;;
+    --configmailwatch) configmailwatch=1 ;;
+    --configmysql) configmysql=1 ;;
+    --finalize) finalize=1 ;;
+    --verbose) verbose=1 ;;
+    --hostname=*) HOSTNAME=${1#*=} ;;
+    --domainname=*) DOMAINNAME=${1#*=} ;;
+    --ipv4address=*) IPV4ADDRESS=${1#*=} ;;
+    --username=*) USERNAME=${1#*=} ;;
+    --efauserpwd=*) efauserpwd=${1#*=} ;;
+    --cliusername=*) CLIUSERNAME=${1#*=} ;;
+    --efaclipwd=*) efaclipwd=${1#*=} ;;
+    --adminemail=*) ADMINEMAIL=${1#*=} ;;
+    --orgname=*) ORGNAME=${1#*=} ;;
+    --mailserver=*) MAILSERVER=${1#*=} ;;
+    --timezone=*) TZONE=${1#*=} ;;
+    # Skip other CentOS-specific options
+    --config*) : ;;
+    --gen*) : ;;
+    --enable*) : ;;
+    --commitall)
+      # For commitall, we only do what NixOS can't do declaratively
+      startmariadb=1
+      configmailwatch=1
+      finalize=1
+      ;;
+    *) : ;;
+  esac
+  shift
+done
+
+# Save config values to eFa-Config
+# Use /var/lib/efa/eFa-Config directly (not symlink) because sed -i needs write access
+save_config() {
+  local key="$1"
+  local value="$2"
+  local config_file="/var/lib/efa/eFa-Config"
+  
+  if [ ! -f "$config_file" ]; then
+    echo "CONFIGURED:NO" > "$config_file"
+  fi
+  
+  if grep -q "^${key}:" "$config_file" 2>/dev/null; then
+    # Use temp file approach instead of sed -i
+    grep -v "^${key}:" "$config_file" > "${config_file}.tmp" || true
+    echo "${key}:${value}" >> "${config_file}.tmp"
+    mv "${config_file}.tmp" "$config_file"
+  else
+    echo "${key}:${value}" >> "$config_file"
+  fi
+}
+
+if [[ $startmariadb -eq 1 ]]; then
+  [ $verbose -eq 1 ] && echo -e "${green}[eFa]${clean} - MariaDB is managed by NixOS (already running)"
+  
+  # On NixOS, MariaDB is already started and configured by the nix module
+  # Just verify it's running
+  if ! systemctl is-active --quiet mysql; then
+    echo -e "${red}[eFa]${clean} - MariaDB is not running. Please check NixOS configuration."
+    exit 1
+  fi
+  
+  [ $verbose -eq 1 ] && echo -e "${green}[eFa]${clean} - MariaDB is running"
+  
+  # Save hostname/domain to config if provided
+  [ -n "$HOSTNAME" ] && save_config "HOSTNAME" "$HOSTNAME"
+  [ -n "$DOMAINNAME" ] && save_config "DOMAINNAME" "$DOMAINNAME"
+  [ -n "$IPV4ADDRESS" ] && save_config "IPV4ADDRESS" "$IPV4ADDRESS"
+  [ -n "$ORGNAME" ] && save_config "ORGNAME" "$ORGNAME"
+  [ -n "$MAILSERVER" ] && save_config "MAILSERVER" "$MAILSERVER"
+  [ -n "$ADMINEMAIL" ] && save_config "ADMINEMAIL" "$ADMINEMAIL"
+  [ -n "$TZONE" ] && save_config "TZONE" "$TZONE"
+fi
+
+if [[ $configmailwatch -eq 1 ]]; then
+  [ $verbose -eq 1 ] && echo -e "${green}[eFa]${clean} - Configuring MailWatch user"
+  
+  if [ -n "$USERNAME" ] && [ -n "$efauserpwd" ]; then
+    # Create MailWatch admin user
+    MAILWATCH_PASS=$(get_password "$MAILWATCH_PASS_FILE")
+    
+    # Check if user exists, if not create
+    mysql -u mailwatch -p"$MAILWATCH_PASS" mailscanner -e \
+      "INSERT IGNORE INTO users SET username = '$USERNAME', password = '$efauserpwd', fullname = 'Administrator', type ='A'" 2>/dev/null || \
+    mysql -u root mailscanner -e \
+      "INSERT IGNORE INTO users SET username = '$USERNAME', password = '$efauserpwd', fullname = 'Administrator', type ='A'" 2>/dev/null || true
+    
+    # Add localhost to whitelist
+    mysql -u mailwatch -p"$MAILWATCH_PASS" mailscanner -e \
+      "INSERT IGNORE INTO whitelist SET to_address = 'default', to_domain = '', from_address = '127.0.0.1'" 2>/dev/null || true
+    mysql -u mailwatch -p"$MAILWATCH_PASS" mailscanner -e \
+      "INSERT IGNORE INTO whitelist SET to_address = 'default', to_domain = '', from_address = '::1'" 2>/dev/null || true
+  fi
+  
+  # Save efa password to config
+  EFA_PASS=$(get_password "$EFA_PASS_FILE")
+  save_config "EFASQLPWD" "$EFA_PASS"
+fi
+
+if [[ $finalize -eq 1 ]]; then
+  [ $verbose -eq 1 ] && echo -e "${green}[eFa]${clean} - Finalizing configuration"
+  
+  # Mark as configured
+  save_config "CONFIGURED" "YES"
+  
+  # Create CLI user if specified (NixOS way would be declarative, but we support runtime too)
+  if [ -n "$CLIUSERNAME" ] && [ -n "$efaclipwd" ]; then
+    if ! id "$CLIUSERNAME" &>/dev/null; then
+      useradd -m -d "/home/$CLIUSERNAME" -s /bin/bash -G wheel "$CLIUSERNAME" 2>/dev/null || true
+      echo "$CLIUSERNAME:$efaclipwd" | chpasswd -e 2>/dev/null || true
+    fi
+  fi
+  
+  # On NixOS, index.html is managed declaratively via symlink
+  # We need to remove the symlink first if we want to write a new file
+  if [ -L /var/www/html/index.html ]; then
+    rm -f /var/www/html/index.html 2>/dev/null || true
+  fi
+  
+  # Update index.html to redirect to mailscanner (only if writable)
+  if [ -w /var/www/html ] || [ ! -e /var/www/html/index.html ]; then
+    cat > /var/www/html/index.html 2>/dev/null << 'EOF' || true
+<!DOCTYPE html>
+<html>
+    <head>
+    <title>MailWatch</title>
+    <meta name="robots" content="noindex">
+    <meta http-equiv="refresh" content="0; url=/mailscanner/" />
+    </head>
+    <body>
+    </body>
+</html>
+EOF
+  fi
+
+  # Set permissions on eFa config files (use /var/lib/efa/ not /etc/eFa/)
+  chown root:nginx /var/lib/efa/eFa-Config 2>/dev/null || true
+  chmod 660 /var/lib/efa/eFa-Config 2>/dev/null || true
+  
+  [ $verbose -eq 1 ] && echo -e "${green}[eFa]${clean} - Configuration complete!"
+fi
+
+exit 0

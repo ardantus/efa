@@ -1,0 +1,12 @@
+--- a/apache-config-5.0.0.sh
++++ b/apache-config-5.0.0.sh
+@@ -27,5 +27,8 @@ source /usr/src/eFa/eFa-settings.inc
+ #-----------------------------------------------------------------------------#
+ # Start configuration of apache
+ #-----------------------------------------------------------------------------#
+-echo "Configuring Apache..."
++echo "Configuring Apache..."
++echo "NixOS: Apache configuration is managed declaratively."
++echo "Skipping apache-config-5.0.0.sh."
++exit 0
+ rm -f /etc/httpd/conf.d/welcome.conf

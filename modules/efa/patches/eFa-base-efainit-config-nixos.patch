@@ -1,0 +1,8 @@
+--- a/eFaInit-config-5.0.0.sh
++++ b/eFaInit-config-5.0.0.sh
+@@ -32,1 +32,4 @@
+-echo "Configuring eFaInit..."
++echo "Configuring eFaInit..."
++echo "NixOS: eFaInit is configured via nginx module."
++echo "Skipping eFaInit-config-5.0.0.sh."
++exit 0

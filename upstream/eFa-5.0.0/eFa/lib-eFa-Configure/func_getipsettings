@@ -1,0 +1,66 @@
+# +---------------------------------------------------+
+# Function to grab the current IP settings.
+# +---------------------------------------------------+
+function func_getipsettings(){
+  interf=$(ip link show | grep ^[0-9] | awk -F': ' '{print $2}' | sed -e '/^lo/d' | sort | uniq)
+  nrintf=$(echo $interf | wc -w)
+  if [ $nrintf -gt 1 ]
+    then
+      func_echo-header
+      echo -e "You seem to have multiple network interfaces"
+      echo -e "Please select the interface you want to configure"
+      echo -e "The interface names on your machine are:"
+      for int in $interf
+        do
+          echo " - $int"
+        done
+
+      echo -e ""
+      echo -e "Enter the primary interface name:"
+      echo -e ""
+      echo -e -n "$green[eFa]$clean : "
+      local choice
+      read choice
+      choice_check=0
+      for int in $interf
+        do
+        if [ $int == $choice ]
+          then
+            choice_check=1
+        fi
+        done
+
+      # Check if the user typed a interface that exists.
+      if [ $choice_check -eq 0 ]
+        then
+          echo -e "$red [eFa] ERROR, That interface does not exist. $clean"
+          pause
+          func_getipsettings
+          return
+      fi
+      if [ $choice_check -eq 1 ]
+         then
+          INTERFACE=$choice
+        fi
+     else
+        INTERFACE=$interf
+    fi
+
+    NAME=$(nmcli -t c show --active | grep ":$INTERFACE" | grep "802-3-ethernet" | awk -F':' '{print $1}')
+
+    IPV4METHOD="`nmcli connection show $NAME | grep ipv4.method | awk '{print $2}'`"
+    IPV6METHOD="`nmcli connection show $NAME | grep ipv6.method | awk '{print $2}'`"
+    IP4="`nmcli connection show $NAME | grep ipv4.addresses | awk '{print $2}' | awk -F'/' '{print $1}'`"
+    NM4="`nmcli connection show $NAME | grep ipv4.addresses | awk '{print $2}' | awk -F',' '{print $1}' | awk -F'/' '{print $2}'`"
+    GW4="`nmcli connection show $NAME | grep ipv4.gateway | awk '{print $2}'`" 
+    IP6="`nmcli connection show $NAME | grep ipv6.addresses | awk '{print $2}' | awk -F'/' '{print $1}'`"
+    PF6="`nmcli connection show $NAME | grep ipv6.addresses | awk '{print $2}' | awk -F',' '{print $1}' | awk -F'/' '{print $2}'`"
+    GW6="`nmcli connection show $NAME | grep ipv6.gateway | awk '{print $2}'`"
+    RECURSIVEDNS="`grep RECURSION /etc/eFa/eFa-Config | sed 's/.*://'`"
+    [[ -z $(grep 'do-ip6: no' /etc/unbound/unbound.conf) ]] && IPV6DNS='yes' || IPV6DNS='no'
+    DNS1="`grep forward-addr /etc/unbound/conf.d/forwarders.conf | awk 'NR==1 {print $2}'`"
+    DNS2="`grep forward-addr /etc/unbound/conf.d/forwarders.conf | awk 'NR==2 {print $2}'`"
+    HOSTNAME="`grep HOSTNAME /etc/eFa/eFa-Config | sed 's/.*://'`"
+    DOMAINNAME="`grep DOMAINNAME /etc/eFa/eFa-Config | sed 's/.*://'`"
+}
+# +---------------------------------------------------+

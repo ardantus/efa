@@ -1,0 +1,33 @@
+--- a/eFa/lib-eFa-Configure/func_apachesettings
++++ b/eFa/lib-eFa-Configure/func_apachesettings
+@@ -1,3 +1,12 @@
+ # +---------------------------------------------------+
+ # Configure Apache
+ # +---------------------------------------------------+
++function func_apache-settings() {
++  func_echo-header
++  echo -e "Apache settings"
++  echo -e ""
++  echo -e "NixOS: web server is configured declaratively (nginx)."
++  echo -e "Use NixOS module options instead of this menu."
++  pause
++  return
++}
++
+ function func_apache-settings() {
+   menu=0
+   apachemenu=1
+@@ -29,6 +38,12 @@ function func_apache-settings() {
+ # +---------------------------------------------------+
+ # Configure Apache HTTPS
+ # +---------------------------------------------------+
++function func_https() {
++  func_echo-header
++  echo -e "NixOS: HTTPS is configured declaratively (nginx)."
++  pause
++  return
++}
++
+ function func_https() {
+   func_echo-header
+   

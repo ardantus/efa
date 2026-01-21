@@ -1,0 +1,44 @@
+package MailWatchConf;
+
+use strict;
+use warnings;
+use DBI;
+
+# MailWatch database configuration for eFa NixOS
+my ($db_host) = 'localhost';
+my ($db_name) = 'mailscanner';
+my ($db_user) = 'mailwatch';
+
+# Read password from eFa config
+sub get_db_pass {
+    my $config_file = '/etc/eFa/MailWatch-Config';
+    my $password = '';
+    my $fh;
+    if (open($fh, '<', $config_file)) {
+        while (my $line = <$fh>) {
+            if ($line =~ /^MAILWATCHSQLPWD:(.*)/) {
+                $password = $1;
+                chomp($password);
+                last;
+            }
+        }
+        close($fh);
+    }
+    return $password;
+}
+
+my ($db_pass) = get_db_pass();
+
+sub db_host { return $db_host; }
+sub db_name { return $db_name; }
+sub db_user { return $db_user; }
+sub db_pass { return $db_pass; }
+
+sub connect_db {
+    my $dsn = "DBI:mysql:database=$db_name;host=$db_host";
+    my $dbh = DBI->connect($dsn, $db_user, get_db_pass(),
+        { RaiseError => 0, PrintError => 0, mysql_enable_utf8 => 1 });
+    return $dbh;
+}
+
+1;
