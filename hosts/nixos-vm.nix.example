@@ -1,0 +1,36 @@
+# Host-specific configuration template for eFa NixOS
+# Copy this file to hosts/nixos-vm.nix and customize for your system
+#
+# To find your disk UUIDs, run:
+#   lsblk -f
+#   blkid
+
+{ config, lib, ... }:
+
+{
+  # Example fileSystems for NVMe disk with EFI boot
+  # Adjust device paths and UUIDs according to your system
+  fileSystems."/" = {
+    device = "/dev/disk/by-uuid/YOUR-ROOT-UUID";
+    fsType = "ext4";
+  };
+
+  fileSystems."/boot" = {
+    device = "/dev/disk/by-uuid/YOUR-EFI-UUID";
+    fsType = "vfat";
+  };
+
+  # Example for SATA disk:
+  # fileSystems."/" = {
+  #   device = "/dev/disk/by-uuid/YOUR-ROOT-UUID";
+  #   fsType = "ext4";
+  # };
+  #
+  # fileSystems."/boot" = {
+  #   device = "/dev/disk/by-uuid/YOUR-EFI-UUID";
+  #   fsType = "vfat";
+  # };
+
+  # You can also add swap if needed:
+  # swapDevices = [ { device = "/dev/disk/by-uuid/YOUR-SWAP-UUID"; } ];
+}

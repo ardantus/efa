@@ -301,12 +301,25 @@ sudo nixos-rebuild switch --flake .#efaAarch64
 ```
 
 Jika muncul error **`fileSystems`/`boot.loader.grub.devices`/`ACME`**:
-1. **Import hardware configuration** ke flake (wajib untuk `fileSystems` dan boot):
+1. **Konfigurasi fileSystems** (wajib):
+   
+   **Opsi A: Import hardware configuration** (paling mudah):
    ```sh
    mkdir -p /home/nixos/efa/hosts
    sudo cp /etc/nixos/hardware-configuration.nix /home/nixos/efa/hosts/nixos-vm.nix
    ```
    `flake.nix` sudah otomatis meng‑include `./hosts/nixos-vm.nix` jika file ada.
+   
+   **Opsi B: Customize langsung di flake.nix**:
+   - Cari UUID disk dengan: `lsblk -f` atau `blkid`
+   - Edit `flake.nix`, bagian `fileSystems` di konfigurasi `efa`
+   - Ganti `CHANGE-THIS-TO-YOUR-ROOT-UUID` dan `CHANGE-THIS-TO-YOUR-EFI-UUID` dengan UUID aktual
+   
+   **Opsi C: Gunakan helper script**:
+   ```sh
+   ./scripts/find-disk-uuids.sh
+   ```
+   Lalu edit `flake.nix` atau buat `hosts/nixos-vm.nix` berdasarkan template di `hosts/nixos-vm.nix.example`
 2. **ACME**: Jika belum punya email/SSL, matikan dulu:
    ```nix
    efa.web.enableACME = false;

@@ -76,8 +76,9 @@ in {
   };
 
   config = {
-    # Note: /var/lib/mysql is created by NixOS mysql module
+    # Note: /var/lib/mysql is created by NixOS mysql module, but ensure it exists for plugin directory
     systemd.tmpfiles.rules = [
+      "d /var/lib/mysql 0755 root root -"
       "d /var/lib/mysql/plugin 0755 root root -"
       "d /run/mysqld 0755 mysql mysql -"
     ];
@@ -276,8 +277,19 @@ in {
     system.activationScripts.efaMariaDbPlugins = ''
       set -euo pipefail
       if [ -d ${pkgs.mariadb}/lib/mysql/plugin ]; then
+        # Ensure parent directories exist before rsync
+        # Create /var/lib/mysql first if it doesn't exist
+        mkdir -p /var/lib/mysql
+        chmod 0755 /var/lib/mysql
+        chown root:root /var/lib/mysql
+        # Then create plugin subdirectory
+        mkdir -p /var/lib/mysql/plugin
+        chmod 0755 /var/lib/mysql/plugin
+        chown root:root /var/lib/mysql/plugin
+        # Now rsync can safely create files in the directory
         ${pkgs.rsync}/bin/rsync -a --delete ${pkgs.mariadb}/lib/mysql/plugin/ /var/lib/mysql/plugin/
         chown -R root:root /var/lib/mysql/plugin
+        chmod -R 0755 /var/lib/mysql/plugin
       fi
     '';
 

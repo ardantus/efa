@@ -118,6 +118,17 @@
                 innodb_log_buffer_size = lib.mkForce "8M";
                 innodb_log_file_size = lib.mkForce "64M";
               };
+              # FileSystems: Define your root filesystem here or in hosts/nixos-vm.nix
+              # To find your disk UUIDs, run: lsblk -f or blkid
+              # This is a placeholder - you MUST customize the device UUID for your system
+              fileSystems."/" = lib.mkDefault {
+                device = "/dev/disk/by-uuid/CHANGE-THIS-TO-YOUR-ROOT-UUID";
+                fsType = "ext4";
+              };
+              fileSystems."/boot" = lib.mkDefault {
+                device = "/dev/disk/by-uuid/CHANGE-THIS-TO-YOUR-EFI-UUID";
+                fsType = "vfat";
+              };
               system.stateVersion = "24.11";
             })
           ];
